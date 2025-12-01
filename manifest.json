@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Cronometer Keyboard Plugin",
+  "version": "1.0.0",
+  "description": "Add keyboard shortcuts to Cronometer for faster nutrition tracking",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://cronometer.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://cronometer.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+}
