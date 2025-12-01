@@ -159,9 +159,9 @@
     // Split into lines
     const lines = text.split('\n');
 
-    // Pattern to match: Label: Number Unit
-    // Examples: "Energy: 380 kcal", "B1 (Thiamine): 0.08 mg"
-    const pattern = /^[•\-\s]*(.+?):\s*(\d+\.?\d*)\s*([a-zA-Zµμ]+)/;
+    // Pattern to match: Label: Number Unit OR Label Number Unit (colon optional)
+    // Examples: "Energy: 380 kcal", "Energy 380 kcal", "B1 (Thiamine) 0.08 mg"
+    const pattern = /^[•\-\s]*(.+?)[\s:]+(\d+\.?\d*)\s+([a-zA-Zµμ]+)/;
 
     lines.forEach(line => {
       const match = line.trim().match(pattern);
