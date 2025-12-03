@@ -1,34 +1,26 @@
-# Cronometer Keyboard Plugin
+# Cronometer Auto-Fill Plugin
 
-A Chrome extension that supercharges Cronometer's Custom Foods page with keyboard navigation and AI-powered auto-fill. Enter nutritional data 10x faster!
+A Chrome extension that supercharges Cronometer's Custom Foods page with AI-powered auto-fill. Enter nutritional data for custom foods in seconds instead of minutes!
 
-## 🚀 Features
-
-### ⌨️ Full Keyboard Navigation
-
-Navigate between nutrition fields without touching your mouse:
-
-- **Tab** - Jump to the next field
-- **Shift+Tab** - Go back to the previous field
-- **Enter** - Save current value and move to next field
-
-No more clicking into each of 80+ fields individually!
+## 🚀 How It Works
 
 ### 🤖 AI-Powered Auto-Fill
 
-Ask Claude AI to analyze a food photo and paste the nutritional breakdown directly into Cronometer:
+1. **Ask Claude AI to analyze your food:**
+   - Send a photo, description, or both
+   - Use the special prompt below to get properly formatted output
 
-1. Send Claude a photo: *"Analyze this chocolate cake and estimate nutrition per 100g"*
-2. Copy Claude's response (with values like "Energy: 380 kcal", "Protein: 3.5 g", etc.)
-3. Paste anywhere on the Custom Foods page
-4. **86+ fields auto-filled instantly!** ✨
+2. **Copy Claude's response** (formatted like "Energy: 380 kcal", "Protein: 3.5 g", etc.)
 
-The plugin intelligently:
-- Parses nutritional data from natural language
-- Matches labels to fields (handles variations like "Fiber" vs "Fibre")
-- Validates units before filling
-- Highlights filled fields with a green flash
-- Shows a notification with how many fields were filled
+3. **Paste on the Custom Foods page** - The plugin automatically:
+   - Parses nutritional data from the text
+   - Matches labels to Cronometer fields (handles variations like "Fiber" vs "Fibre")
+   - Validates units before filling
+   - Simulates clicking and typing into each field
+   - Highlights filled fields with a green flash
+   - Shows a notification with how many fields were filled
+
+**Result: 86+ fields auto-filled instantly!** ✨
 
 ## 📦 Installation
 
@@ -51,81 +43,164 @@ The plugin intelligently:
 
 ## 🎯 Usage
 
-### Basic Navigation
+### Getting Nutrition Data from Claude
 
-1. Navigate to Foods → Custom Foods in Cronometer
-2. All nutrition value fields are now proper input boxes
-3. Click on any field (or press Tab to reach it)
-4. Type a value and press Tab or Enter to move to the next field
-5. Fill in your data at lightning speed!
+Use this prompt with Claude AI (works with photos or descriptions):
 
-### Auto-Fill from Claude
+```
+I use an app called Cronometer to track nutrition. Sometimes I ask you to estimate
+the nutritional content of food -- either by describing it, or by showing you a
+picture, or both. When I do, please remember:
+- Give single-valued answers, not ranges; and
+- Give values for all of the following, in this order, using the units shown.
+  For each of the nutritions, you must use the format <label> <value> <unit>:
 
-1. **Take a photo** of your food or describe it to Claude
+General
+Energy,kcal
+Alcohol,g
+Ash,g
+Beta-Hydroxybutyrate,g
+Caffeine,mg
+Oxalate,mg
+Water,g
 
-2. **Ask Claude for nutrition data**:
-   ```
-   Please analyze this chocolate cake and provide detailed
-   nutritional values per 100g in the format:
-   Label: Value Unit
-   ```
+Carbohydrates
+Total Carbs,g
+Fibre,g
+Starch,g
+Sugars,g
+Allulose,g
+Fructose,g
+Galactose,g
+Glucose,g
+Lactose,g
+Maltose,g
+Sucrose,g
+Added Sugars,g
+Sugar Alcohol,g
 
-3. **Copy Claude's response** (it will format it like):
-   ```
-   Energy: 380 kcal
-   Protein: 3.5 g
-   Fat: 17 g
-   Carbohydrates: 52 g
-   ...
-   ```
+Lipids
+Fat,g
+Monounsaturated,g
+Polyunsaturated,g
+Omega-3,g
+Omega-6,g
+Saturated,g
+Trans-Fat,g
+Cholesterol,mg
+Phytosterol,mg
 
-4. **Paste on the Custom Foods page** (Ctrl+V / Cmd+V)
+Protein
+Protein,g
+Alanine,g
+Arginine,g
+Aspartic acid,g
+Cystine,g
+Glutamic acid,g
+Glycine,g
+Histidine,g
+Hydroxyproline,g
+Isoleucine,g
+Leucine,g
+Lysine,g
+Methionine,g
+Phenylalanine,g
+Proline,g
+Serine,g
+Threonine,g
+Tryptophan,g
+Tyrosine,g
+Valine,g
 
-5. **Watch the magic** - Fields auto-fill with green highlights! 🎉
+Vitamins
+B1 (Thiamine),mg
+B2 (Riboflavin),mg
+B3 (Niacin),mg
+B5 (Pantothenic Acid),mg
+B6 (Pyridoxine),mg
+B12 (Cobalamin),µg
+Biotin,µg
+Choline,mg
+Folate,µg
+Vitamin A,µg
+Alpha-carotene,µg
+Beta-carotene,µg
+Beta-cryptoxanthin,µg
+Lutein+Zeaxanthin,µg
+Lycopene,µg
+Retinol,µg
+Vitamin C,mg
+Vitamin D,IU
+Vitamin E,mg
+Beta Tocopherol,mg
+Delta Tocopherol,mg
+Gamma Tocopherol,mg
+Vitamin K,µg
 
-## 🛠️ How It Works
+Minerals
+Calcium,mg
+Chromium,µg
+Copper,mg
+Fluoride,µg
+Iodine,µg
+Iron,mg
+Magnesium,mg
+Manganese,mg
+Molybdenum,µg
+Phosphorus,mg
+Potassium,mg
+Selenium,µg
+Sodium,mg
+Zinc,mg
+```
 
-### Keyboard Navigation
+### Using the Plugin
 
-The plugin converts all nutrition value `<div>` elements into `<input>` fields on page load:
+1. **Get your data**: Send the prompt above to Claude with your food photo/description
+2. **Copy Claude's response** (it will output formatted data like `Energy: 380 kcal`)
+3. **Go to Cronometer**: Navigate to Foods → Custom Foods → Create New Food
+4. **Paste**: Press Ctrl+V (or Cmd+V on Mac) anywhere on the page
+5. **Watch the magic**: Fields auto-fill with green highlights! 🎉
 
-1. Detects when you're on `cronometer.com/#custom-foods`
-2. Finds all editable value cells in nutrition tables
-3. Replaces `<div class="gwt-Label">` elements with `<input class="number-box">` elements
-4. Preserves existing values during conversion
-5. Tab navigation now works natively!
-
-### Auto-Fill Parser
+## 🛠️ Technical Details
 
 When you paste text, the plugin:
 
-1. Captures the paste event
-2. Parses each line looking for the pattern: `Label: Number Unit`
-3. Normalizes labels (removes punctuation, lowercase, handles whitespace)
-4. Matches against Cronometer field labels
-5. Validates units match (handles variations like µg/μg/mcg)
-6. Fills matching fields and highlights them green
-7. Shows a notification with the count of filled fields
+1. **Captures the paste event** on the Cronometer custom foods page
+2. **Parses each line** looking for the pattern: `Label: Number Unit`
+3. **Finds matching fields** by searching within `div.food-editor-nutrition-summary` across all nutrition tables
+4. **Simulates user interaction** for each field:
+   - Clicks on the value cell to activate edit mode
+   - Types the value character-by-character
+   - Presses Enter to save
+5. **Validates everything**:
+   - Normalizes labels (removes punctuation, handles whitespace)
+   - Matches against Cronometer field labels (handles variations like "Fiber" vs "Fibre")
+   - Validates units match (handles µg/μg/mcg variations)
+6. **Provides feedback**:
+   - Flashes matching fields green
+   - Shows notification with count of filled fields
 
 ### Technical Stack
 
 - **Manifest V3** - Modern Chrome extension standard
 - **Vanilla JavaScript** - No dependencies, lightweight and fast
-- **MutationObserver** - Monitors for URL changes in single-page app
+- **Event simulation** - Programmatically triggers Cronometer's GWT handlers
 - **Smart label matching** - Handles variations and synonyms
-- **GWT compatibility** - Works with Cronometer's Google Web Toolkit architecture
+- **Multi-table search** - Works across all nutrition category tables
 
 ## 🎨 What Problem Does This Solve?
 
 Cronometer is fantastic for tracking nutrition, but entering custom foods is tedious:
 
 **Before this plugin:**
-- Click into first field → Type → Click into second field → Type → Repeat 80+ times
+- Click into first field → Type → Click into second field → Type → Repeat 86+ times
 - 5-10 minutes per food entry
 - High chance of errors from repetitive clicking
 
 **With this plugin:**
-- Tab through fields OR paste Claude's analysis once
+- Ask Claude to analyze your food (photo or description)
+- Paste once on the Custom Foods page
 - 30 seconds per food entry
 - AI-powered accuracy from Claude's analysis
 

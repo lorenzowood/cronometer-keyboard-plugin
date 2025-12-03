@@ -1,12 +1,10 @@
 // Cronometer Keyboard Plugin
-// Add keyboard navigation to custom foods page
+// Auto-fill nutrition fields by simulating user interaction
 
 (function() {
   'use strict';
 
   console.log('Cronometer Keyboard Plugin loaded');
-
-  let isInitialized = false;
 
   // Check if we're on the custom foods page
   function isCustomFoodsPage() {
@@ -14,137 +12,42 @@
            window.location.href.includes('custom-foods');
   }
 
-  // Convert all value divs to input fields
-  function convertDivsToInputs() {
-    if (!isCustomFoodsPage()) {
-      return;
-    }
-
-    if (isInitialized) {
-      return;
-    }
-
-    console.log('Converting value divs to input fields...');
-
-    // Find all table rows in nutrition tables
-    const rows = document.querySelectorAll('table.crono-table tr');
-    let convertedCount = 0;
-
-    rows.forEach(row => {
-      // Skip header rows
-      if (row.classList.contains('table-header')) {
-        return;
-      }
-
-      const cells = row.querySelectorAll('td');
-
-      // We're looking for rows with at least 3 cells (label, value, unit)
-      if (cells.length >= 3) {
-        const valueCell = cells[1]; // Second column contains the value
-
-        // Check if this is a value cell (right-aligned)
-        if (valueCell.getAttribute('align') === 'right') {
-          const valueDiv = valueCell.querySelector('div.gwt-Label');
-
-          if (valueDiv && !valueCell.querySelector('input')) {
-            // Get the current value
-            const currentValue = valueDiv.textContent.trim();
-
-            // Skip if it's already an empty placeholder
-            if (currentValue === '-') {
-              // Create an input for empty fields
-              const input = document.createElement('input');
-              input.type = 'text';
-              input.className = 'number-box';
-              input.maxLength = 8;
-              input.size = 8;
-              input.placeholder = '-';
-
-              // Replace the div with the input
-              valueCell.innerHTML = '';
-              valueCell.appendChild(input);
-              convertedCount++;
-            } else {
-              // Create an input with the current value
-              const input = document.createElement('input');
-              input.type = 'text';
-              input.className = 'number-box';
-              input.maxLength = 8;
-              input.size = 8;
-              input.value = currentValue;
-
-              // Replace the div with the input
-              valueCell.innerHTML = '';
-              valueCell.appendChild(input);
-              convertedCount++;
-            }
-          }
-        }
-      }
-    });
-
-    if (convertedCount > 0) {
-      console.log(`Converted ${convertedCount} fields to inputs`);
-      isInitialized = true;
-
-      // Now Tab key will work natively between inputs!
-      // We just need to handle Enter key to move to next field
-      addEnterKeyHandling();
-
-      // Set up paste handler for auto-filling from Claude responses
-      setupPasteHandler();
-    } else {
-      console.log('No fields found to convert, will retry...');
-      setTimeout(convertDivsToInputs, 500);
-    }
-  }
-
-  // Add Enter key handling to move to next field
-  function addEnterKeyHandling() {
-    document.addEventListener('keydown', function(event) {
-      if (event.key === 'Enter' && event.target.matches('input.number-box')) {
-        event.preventDefault();
-
-        // Find all inputs
-        const allInputs = Array.from(document.querySelectorAll('input.number-box'));
-        const currentIndex = allInputs.indexOf(event.target);
-
-        if (currentIndex !== -1 && currentIndex < allInputs.length - 1) {
-          // Focus the next input
-          const nextInput = allInputs[currentIndex + 1];
-          nextInput.focus();
-          nextInput.select();
-        }
-      }
-    });
-
-    console.log('Enter key handling added');
-  }
-
-  // Parse pasted text and auto-fill matching fields
+  // Set up paste handler
   function setupPasteHandler() {
-    document.addEventListener('paste', function(event) {
-      // Only handle paste if we're on the custom foods page
+    document.addEventListener('paste', async function(event) {
       if (!isCustomFoodsPage()) {
         return;
       }
 
-      // Get the pasted text
       const pastedText = event.clipboardData.getData('text');
-
       if (!pastedText) {
         return;
       }
 
-      console.log('Paste detected, attempting to parse nutritional data...');
+      console.log('Paste detected, parsing nutritional data...');
 
-      // Parse and fill the fields
-      const filledCount = parsePastedData(pastedText);
+      // Parse the pasted data
+      const parsedData = parsePastedData(pastedText);
+
+      if (parsedData.length === 0) {
+        console.log('No valid data found in paste');
+        return;
+      }
+
+      console.log(`Found ${parsedData.length} entries to fill`);
+
+      // Fill each field by simulating user interaction
+      let filledCount = 0;
+      for (const entry of parsedData) {
+        const success = await fillFieldBySimulation(entry.label, entry.value, entry.unit);
+        if (success) {
+          filledCount++;
+        }
+        // Small delay between fields to avoid overwhelming the browser
+        await sleep(100);
+      }
 
       if (filledCount > 0) {
-        console.log(`Auto-filled ${filledCount} fields from pasted data`);
-
-        // Show a brief notification
         showNotification(`✓ Auto-filled ${filledCount} fields`);
       }
     });
@@ -152,88 +55,198 @@
     console.log('Paste handler added');
   }
 
-  // Parse the pasted text and fill matching fields
+  // Parse pasted text into structured data
   function parsePastedData(text) {
-    let filledCount = 0;
-
-    // Split into lines
+    const entries = [];
     const lines = text.split('\n');
 
-    // Pattern to match: Label: Number Unit OR Label Number Unit (colon optional)
-    // Examples: "Energy: 380 kcal", "Energy 380 kcal", "B1 (Thiamine) 0.08 mg"
+    // Pattern: Label: Number Unit OR Label Number Unit
+    // Examples: "Energy: 380 kcal", "Protein 25.5 g"
     const pattern = /^[•\-\s]*(.+?)[\s:]+(\d+\.?\d*)\s+([a-zA-Zµμ]+)/;
 
     lines.forEach(line => {
       const match = line.trim().match(pattern);
-
       if (match) {
-        const label = match[1].trim();
-        const value = match[2];
-        const unit = match[3];
-
-        // Try to find and fill the matching field
-        if (fillField(label, value, unit)) {
-          filledCount++;
-        }
+        entries.push({
+          label: match[1].trim(),
+          value: match[2],
+          unit: match[3]
+        });
       }
     });
 
-    return filledCount;
+    return entries;
   }
 
-  // Find and fill a field matching the label
-  function fillField(label, value, unit) {
-    // Normalize the label for matching
+  // Fill a field by simulating exact user interaction
+  async function fillFieldBySimulation(label, value, unit) {
+    // Find the matching row
+    const row = findMatchingRow(label, unit);
+
+    if (!row) {
+      console.log(`No match found for ${label} (${unit})`);
+      return false;
+    }
+
+    const cells = row.querySelectorAll('td');
+    if (cells.length < 3) {
+      return false;
+    }
+
+    const valueCell = cells[1]; // Second column has the value
+
+    // Step 1: Check if field is already an input (from previous edit)
+    let input = valueCell.querySelector('input');
+
+    if (!input) {
+      // Field is not in edit mode, need to click to activate it
+      // Find the div to click on (could be gwt-Label or gwt-HTML)
+      let valueDiv = valueCell.querySelector('div.gwt-Label') ||
+                     valueCell.querySelector('div.gwt-HTML') ||
+                     valueCell.querySelector('div');
+
+      if (!valueDiv) {
+        console.log(`No div found in value cell for ${label}. Cell HTML:`, valueCell.innerHTML);
+        return false;
+      }
+
+      console.log(`Clicking on ${label}...`);
+
+      // Try clicking on the cell itself (not the div) - this might work better
+      const mousedownEvent = new MouseEvent('mousedown', {
+        view: window,
+        bubbles: true,
+        cancelable: true
+      });
+      const mouseupEvent = new MouseEvent('mouseup', {
+        view: window,
+        bubbles: true,
+        cancelable: true
+      });
+      const clickEvent = new MouseEvent('click', {
+        view: window,
+        bubbles: true,
+        cancelable: true
+      });
+
+      // Click on the cell, not the div
+      valueCell.dispatchEvent(mousedownEvent);
+      await sleep(50);
+      valueCell.dispatchEvent(mouseupEvent);
+      await sleep(50);
+      valueCell.dispatchEvent(clickEvent);
+
+      // Wait for the DIV to convert to INPUT
+      await sleep(200);
+
+      // Step 2: Verify INPUT was created
+      input = valueCell.querySelector('input');
+      if (!input) {
+        console.log(`Failed to create input for ${label}`);
+        return false;
+      }
+    } else {
+      console.log(`${label} already in edit mode, filling directly...`);
+    }
+
+    // Step 3: Focus the input and clear it
+    input.focus();
+    input.select();
+
+    // Step 4: Type the value (simulate character by character)
+    input.value = '';
+    for (const char of value) {
+      input.value += char;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await sleep(10);
+    }
+
+    // Step 5: Simulate Enter key to confirm the value
+    const enterEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      code: 'Enter',
+      keyCode: 13,
+      which: 13,
+      bubbles: true,
+      cancelable: true
+    });
+    input.dispatchEvent(enterEvent);
+
+    // Wait for the save to complete
+    await sleep(200);
+
+    // Step 6: Verify the INPUT converted back to DIV (indicating save)
+    input = valueCell.querySelector('input');
+    const div = valueCell.querySelector('div.gwt-Label');
+
+    if (!input && div) {
+      console.log(`✓ Successfully filled ${label}: ${value} ${unit}`);
+
+      // Flash the cell green
+      valueCell.style.backgroundColor = '#d5f3df';
+      setTimeout(() => {
+        valueCell.style.backgroundColor = '';
+      }, 1000);
+
+      return true;
+    } else {
+      console.log(`⚠ Value entered but save status unclear for ${label}`);
+      return false;
+    }
+  }
+
+  // Find a table row matching the label and unit
+  function findMatchingRow(label, unit) {
+    // Constrain search to the food editor's nutrition tables
+    const foodEditor = document.querySelector('div.food-editor-nutrition-summary');
+    if (!foodEditor) {
+      console.log('Food editor not found');
+      return null;
+    }
+
+    const tables = foodEditor.querySelectorAll('table.crono-table');
+    if (tables.length === 0) {
+      console.log('No nutrition tables found in food editor');
+      return null;
+    }
+
     const normalizedLabel = normalizeLabel(label);
 
-    // Find all table rows
-    const rows = document.querySelectorAll('table.crono-table tr');
+    // Search through all tables
+    for (const table of tables) {
+      const rows = table.querySelectorAll('tr');
 
-    for (const row of rows) {
-      const cells = row.querySelectorAll('td');
+      for (const row of rows) {
+        const cells = row.querySelectorAll('td');
 
-      if (cells.length >= 3) {
-        // Get the label cell (first column)
-        const labelCell = cells[0];
-        const labelDiv = labelCell.querySelector('div.gwt-HTML');
+        if (cells.length >= 3) {
+          // Check label (first cell)
+          const labelDiv = cells[0].querySelector('div.gwt-HTML');
+          if (!labelDiv) continue;
 
-        if (labelDiv) {
-          const fieldLabel = labelDiv.textContent.trim();
-          const normalizedFieldLabel = normalizeLabel(fieldLabel);
+          const rowLabel = labelDiv.textContent.trim();
+          const normalizedRowLabel = normalizeLabel(rowLabel);
 
           // Check if labels match
-          if (labelsMatch(normalizedLabel, normalizedFieldLabel)) {
-            // Check if unit matches (third column)
-            const unitCell = cells[2];
-            const unitDiv = unitCell.querySelector('div.gwt-Label');
+          if (!labelsMatch(normalizedLabel, normalizedRowLabel)) {
+            continue;
+          }
 
-            if (unitDiv) {
-              const fieldUnit = unitDiv.textContent.trim();
+          // Check unit (third cell)
+          const unitDiv = cells[2].querySelector('div.gwt-Label');
+          if (!unitDiv) continue;
 
-              // Verify units match (with some flexibility)
-              if (unitsMatch(unit, fieldUnit)) {
-                // Fill the input (second column)
-                const valueCell = cells[1];
-                const input = valueCell.querySelector('input.number-box');
+          const rowUnit = unitDiv.textContent.trim();
 
-                if (input) {
-                  input.value = value;
-                  input.style.backgroundColor = '#d5f3df'; // Light green flash
-                  setTimeout(() => {
-                    input.style.backgroundColor = '';
-                  }, 1000);
-
-                  console.log(`Filled ${fieldLabel}: ${value} ${fieldUnit}`);
-                  return true;
-                }
-              }
-            }
+          // Check if units match
+          if (unitsMatch(unit, rowUnit)) {
+            return row;
           }
         }
       }
     }
 
-    return false;
+    return null;
   }
 
   // Normalize label for matching
@@ -247,24 +260,22 @@
 
   // Check if two labels match
   function labelsMatch(label1, label2) {
-    // Exact match (case-insensitive, punctuation removed)
     if (label1 === label2) {
       return true;
     }
 
-    // Check for common variations only - must be exact match to a known synonym
+    // Common variations
     const variations = {
       'energy': ['energy', 'calories'],
       'fibre': ['fibre', 'fiber'],
       'fiber': ['fibre', 'fiber'],
-      'total carbs': ['total carbs', 'carbohydrates'],
-      'carbohydrates': ['total carbs', 'carbohydrates'],
+      'total carbs': ['total carbs', 'carbohydrates', 'carbs'],
+      'carbohydrates': ['total carbs', 'carbohydrates', 'carbs'],
       'monounsaturated': ['monounsaturated', 'mufa'],
       'polyunsaturated': ['polyunsaturated', 'pufa'],
       'saturated': ['saturated', 'sfa'],
     };
 
-    // Check if both labels are in the same variation group
     for (const [key, vals] of Object.entries(variations)) {
       if (vals.includes(label1) && vals.includes(label2)) {
         return true;
@@ -276,16 +287,14 @@
 
   // Check if units match
   function unitsMatch(unit1, unit2) {
-    // Normalize units
     const u1 = unit1.toLowerCase().trim();
     const u2 = unit2.toLowerCase().trim();
 
-    // Direct match
     if (u1 === u2) {
       return true;
     }
 
-    // Handle common variations
+    // Common unit variations
     const unitMap = {
       'µg': ['µg', 'μg', 'ug', 'mcg'],
       'mg': ['mg'],
@@ -304,7 +313,12 @@
     return false;
   }
 
-  // Show a brief notification
+  // Helper: Sleep for ms milliseconds
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // Show notification
   function showNotification(message) {
     const notification = document.createElement('div');
     notification.textContent = message;
@@ -319,50 +333,19 @@
       font-weight: bold;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       z-index: 10000;
-      animation: slideIn 0.3s ease-out;
     `;
 
     document.body.appendChild(notification);
 
-    // Remove after 3 seconds
     setTimeout(() => {
-      notification.style.animation = 'slideOut 0.3s ease-out';
-      setTimeout(() => {
-        notification.remove();
-      }, 300);
+      notification.remove();
     }, 3000);
   }
 
-  // Watch for URL changes (single-page app navigation)
-  let lastUrl = location.href;
-  new MutationObserver(() => {
-    const currentUrl = location.href;
-    if (currentUrl !== lastUrl) {
-      lastUrl = currentUrl;
-      isInitialized = false;
-      if (isCustomFoodsPage()) {
-        setTimeout(convertDivsToInputs, 1000);
-      }
-    }
-  }).observe(document, { subtree: true, childList: true });
-
-  // Watch for hash changes
-  window.addEventListener('hashchange', function() {
-    isInitialized = false;
-    if (isCustomFoodsPage()) {
-      setTimeout(convertDivsToInputs, 1000);
-    }
-  });
-
-  // Initialize immediately if we're already on the custom foods page
+  // Initialize
   if (isCustomFoodsPage()) {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(convertDivsToInputs, 1000);
-      });
-    } else {
-      setTimeout(convertDivsToInputs, 1000);
-    }
+    console.log('On custom foods page - paste handler ready');
+    setupPasteHandler();
   }
 
 })();
